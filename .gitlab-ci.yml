@@ -21,7 +21,8 @@ fetch:easydex-gui:
   script:
     - apk add --update unzip curl
     - curl -X POST -F token=$CI_JOB_TOKEN --form ref=$CI_COMMIT_REF_NAME  https://gitlab.com/api/v4/projects/7352217/trigger/pipeline
-    - unzip artifacts.zip
+    - ls
+    - unzip artifacts
     - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
   artifacts:
     paths: [gui/EasyDEX-GUI/react/build]
