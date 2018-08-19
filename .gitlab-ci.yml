@@ -1,5 +1,4 @@
 stages:
-  - fetch-dependencies
   - build
   - test
   - deploy
@@ -15,28 +14,15 @@ variables:
   AGAMA_OSX: ${ELECTRON_BUILD_OSX}-v${AGAMA_VERSION}-beta.tar.gz
   GIT_SUBMODULE_STRATEGY: recursive
 
-fetch:easydex-gui:
-  image: asherd/agama-builder
-  stage: fetch-dependencies
-  script:
-    - apk add --update unzip curl
-    - curl -X POST -F token=$CI_JOB_TOKEN --form ref=$CI_COMMIT_REF_NAME  https://gitlab.com/api/v4/projects/7352217/trigger/pipeline
-    - ls
-    - unzip artifacts
-    - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
-  artifacts:
-    paths: [gui/EasyDEX-GUI/react/build]
-    expire_in: 1 week
-
 build:linux:
   image: asherd/agama-builder
   stage: build
-  dependencies:
-    - fetch:easydex-gui
   before_script:
+    - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
+    - rm $EASYDEX_GUI_BUILD
+  script:
     - npm install electron-packager -g
     - npm install
-  script:
     - ./buildscripts/electron-build-linux.sh
     - cd build
     - tar -czf $AGAMA_LINUX $ELECTRON_BUILD_LINUX
@@ -48,13 +34,13 @@ build:linux:
 
 build:windows:
   stage: build
-  image: asherd/agama-builder:windows
-  dependencies:
-  - fetch:easydex-gui
+  image: asherd/agama-builder/windows
   before_script:
+    - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
+    - rm $EASYDEX_GUI_BUILD
+  script:
     - npm install electron-packager -g
     - npm install
-  script:
     - ./buildscripts/electron-build-windows.sh
     - cd build
     - zip -r $AGAMA_WINDOWS $ELECTRON_BUILD_WINDOWS
@@ -67,12 +53,13 @@ build:windows:
 build:mac:
   stage: build
   image: asherd/agama-builder
-  dependencies:
-  - fetch:easydex-gui
   before_script:
-    - npm install electron-packager -g
-    - npm install
+    - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
+    - rm $EASYDEX_GUI_BUILD
   script: 
+    - npm install electron-packager -g
+    - npm install electron -g --unsafe-perm=true
+    - npm install
     - ./buildscripts/electron-build-osx.sh
     - cd build
     - tar -czf $AGAMA_OSX $ELECTRON_BUILD_OSX
@@ -82,6 +69,7 @@ build:mac:
     - $AGAMA_OSX
     expire_in: 1 week
     
+
 
 .test:
   stage: test
