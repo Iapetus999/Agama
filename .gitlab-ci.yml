@@ -1,11 +1,12 @@
 stages:
+  - fetch-dependencies
   - build
   - test
   - deploy
 variables:
   DOCKER_DRIVER: overlay2
   AGAMA_VERSION: 0.3.12a
-  EASYDEX_GUI_ARTIFACT: build.tar.gz
+  EASYDEX_GUI_BUILD: build.tar.gz
   ELECTRON_BUILD_LINUX: Agama-linux-x64
   ELECTRON_BUILD_WINDOWS: Agama-win32-x64
   ELECTRON_BUILD_OSX: Agama-darwin-x64
@@ -14,15 +15,25 @@ variables:
   AGAMA_OSX: ${ELECTRON_BUILD_OSX}-v${AGAMA_VERSION}-beta.tar.gz
   GIT_SUBMODULE_STRATEGY: recursive
 
+fetch:easydex-gui:
+  stage: fetch-dependencies
+  script:
+    - curl -X POST -F token=$CI_JOB_TOKEN --form ref=$CI_COMMIT_REF_NAME  https://gitlab.com/api/v4/projects/7352217/trigger/pipeline
+    - unzip artifacts.zip
+    - tar -xzf $EASYDEX_GUI_BUILD --directory gui/EasyDEX-GUI/react
+  artifacts:
+    paths: [gui/EasyDEX-GUI/react/build]
+    expire_in: 1 week
+
 build:linux:
   image: asherd/agama-builder
   stage: build
+  dependencies:
+    - fetch:easydex-gui
   before_script:
-    - tar -xzf $EASYDEX_GUI_ARTIFACT --directory gui/EasyDEX-GUI/react
-    - rm $EASYDEX_GUI_ARTIFACT
-  script:
     - npm install electron-packager -g
     - npm install
+  script:
     - ./buildscripts/electron-build-linux.sh
     - cd build
     - tar -czf $AGAMA_LINUX $ELECTRON_BUILD_LINUX
@@ -35,12 +46,12 @@ build:linux:
 build:windows:
   stage: build
   image: asherd/agama-builder/windows
+  dependencies:
+  - fetch:easydex-gui
   before_script:
-    - tar -xzf $EASYDEX_GUI_ARTIFACT --directory gui/EasyDEX-GUI/react
-    - rm $EASYDEX_GUI_ARTIFACT
-  script:
     - npm install electron-packager -g
     - npm install
+  script:
     - ./buildscripts/electron-build-windows.sh
     - cd build
     - zip -r $AGAMA_WINDOWS $ELECTRON_BUILD_WINDOWS
@@ -53,12 +64,12 @@ build:windows:
 build:mac:
   stage: build
   image: asherd/agama-builder
+  dependencies:
+  - fetch:easydex-gui
   before_script:
-    - tar -xzf $EASYDEX_GUI_ARTIFACT --directory gui/EasyDEX-GUI/react
-    - rm $EASYDEX_GUI_ARTIFACT
-  script: 
     - npm install electron-packager -g
     - npm install
+  script: 
     - ./buildscripts/electron-build-osx.sh
     - cd build
     - tar -czf $AGAMA_OSX $ELECTRON_BUILD_OSX
