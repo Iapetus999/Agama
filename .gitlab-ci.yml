@@ -48,7 +48,7 @@ build:linux:
 
 build:windows:
   stage: build
-  image: asherd/agama-builder/windows
+  image: asherd/agama-builder:windows
   dependencies:
   - fetch:easydex-gui
   before_script:
