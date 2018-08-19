@@ -16,6 +16,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 fetch:easydex-gui:
+  image: asherd/agama-builder/windows
   stage: fetch-dependencies
   script:
     - curl -X POST -F token=$CI_JOB_TOKEN --form ref=$CI_COMMIT_REF_NAME  https://gitlab.com/api/v4/projects/7352217/trigger/pipeline
