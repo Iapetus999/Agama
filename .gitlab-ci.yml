@@ -47,7 +47,7 @@ build:linux:
     
 build:windows:
   stage: build
-  image: asherd/agama-builder
+  image: asherd/agama-builder:windows
   before_script:
   - echo $AUTH_KEY > AUTH_KEY.json
   - gcloud auth activate-service-account --key-file AUTH_KEY.json
