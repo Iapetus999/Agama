@@ -8,15 +8,14 @@ variables:
   DOCKER_DRIVER: overlay2
   DEFAULT_VERUSCOIN_BRANCH: dev
   DEFAULT_EASYDEXGUI_BRANCH: dev
-  AGAMA_VERSION: 0.3.14
-  VERUSCOIN_VERSION: 0.3.14
+  AGAMA_VERSION: 0.4.0c
   EASYDEX_GUI_BUILD: build.tar.gz
   ELECTRON_BUILD_LINUX: Agama-linux-x64
   ELECTRON_BUILD_WINDOWS: Agama-win32-x64
   ELECTRON_BUILD_MACOS: Agama-darwin-x64
-  AGAMA_LINUX: ${ELECTRON_BUILD_LINUX}-v${AGAMA_VERSION}-beta.tar.gz
-  AGAMA_WINDOWS: ${ELECTRON_BUILD_WINDOWS}-v${AGAMA_VERSION}-beta.zip
-  AGAMA_MACOS: Agama-MacOS-v${AGAMA_VERSION}-beta
+  AGAMA_LINUX: ${ELECTRON_BUILD_LINUX}-v${AGAMA_VERSION}.tar.gz
+  AGAMA_WINDOWS: ${ELECTRON_BUILD_WINDOWS}-v${AGAMA_VERSION}.zip
+  AGAMA_MACOS: Agama-MacOS-v${AGAMA_VERSION}
   GIT_SUBMODULE_STRATEGY: recursive
   POST_MESSAGE: " ${UPSTREAM_TRIGGER_INFO}$\n$\n
       Pipeline Trigger: ${CI_PIPELINE_SOURCE}$\n
@@ -24,6 +23,7 @@ variables:
       Commit: ${CI_COMMIT_SHA}$\n
       Author:  ${GITLAB_USER_NAME} <${GITLAB_USER_EMAIL}>$\n
       ${CI_COMMIT_MESSAGE}"
+
 
 build:linux:
   image: asherd/agama-builder
@@ -57,6 +57,11 @@ build:linux:
   - npm run package-linux
   - cd build
   - tar -czf $AGAMA_LINUX $ELECTRON_BUILD_LINUX
+  - curl -F file=@"$AGAMA_LINUX"
+      -F channels="$AGAMA_POST_CHANNEL"
+      -F initial_comment="${POST_COMMENT}"
+      -H "${SLACK_BOT_AUTH}"
+      "https://slack.com/api/files.upload"
   - mv $AGAMA_LINUX ..
   artifacts:
     paths: [$AGAMA_LINUX]
@@ -92,6 +97,11 @@ build:windows:
   - npm run package-win
   - cd build
   - zip -r $AGAMA_WINDOWS $ELECTRON_BUILD_WINDOWS
+  - curl -F file=@"$AGAMA_WINDOWS"
+      -F channels="$AGAMA_POST_CHANNEL"
+      -F initial_comment="${POST_COMMENT}"
+      -H "${SLACK_BOT_AUTH}"
+      "https://slack.com/api/files.upload"
   - mv $AGAMA_WINDOWS ..
   artifacts:
     paths: [$AGAMA_WINDOWS]
@@ -120,6 +130,11 @@ build:mac:
   - npm install electron-packager -g
   - npm run package-mac
   - npm run create-installer-mac
+  - curl -F file=@"$AGAMA_MACOS.dmg"
+      -F channels="$AGAMA_POST_CHANNEL"
+      -F initial_comment="${POST_COMMENT}"
+      -H "${SLACK_BOT_AUTH}"
+      "https://slack.com/api/files.upload"
   artifacts:
     paths: [$AGAMA_MACOS.dmg]
     expire_in: 1 week
@@ -132,39 +147,14 @@ deploy:
   - build:linux
   - build:windows
   - build:mac
-  before_script:
-  - export COMMIT_MESSAGE="$(git log -1 --pretty)"
-  - export POST_COMMENT="Branch ${CI_COMMIT_REF_NAME}\n${COMMIT_MESSAGE}"
-  - echo $POST_COMMENT
-  - echo -e $POST_COMMENT
-  - echo "${POST_COMMENT}"
-  - echo -e "${POST_COMMENT}"
-  - export AGAMA_LINUX_MD5=$(md5sum $AGAMA_LINUX | cut -d " " -f 1)
-  - export AGAMA_WINDOWS_MD5=$(md5sum $AGAMA_WINDOWS | cut -d " " -f 1)
-  - export AGAMA_MACOS_MD5=$(md5sum $AGAMA_MACOS.dmg | cut -d " " -f 1)
   script:
-  - curl -F file=@"${AGAMA_LINUX}"
-      -F channels="${AGAMA_POST_CHANNEL}"
-      -F initial_comment='${POST_MESSAGE}'
-      -H "${SLACK_BOT_AUTH}"
-      "https://slack.com/api/files.upload"
-  - curl -F file=@"${AGAMA_WINDOWS}"
-      -F channels="${AGAMA_POST_CHANNEL}"
-      -F initial_comment="${POST_MESSAGE}"
-      -H "${SLACK_BOT_AUTH}"
-      "https://slack.com/api/files.upload"
-  - curl -F file=@"${AGAMA_MACOS}.dmg"
-      -F channels="${AGAMA_POST_CHANNEL}"
-      -F initial_comment="${POST_MESSAGE}"
-      -H "${SLACK_BOT_AUTH}"
-      "https://slack.com/api/files.upload"
-  - mkdir -p ${CI_COMMIT_REF_NAME}/Windows
-  - mkdir -p ${CI_COMMIT_REF_NAME}/Linux
-  - mkdir -p ${CI_COMMIT_REF_NAME}/MacOS
-  - mv ${AGAMA_LINUX} ${CI_COMMIT_REF_NAME}/Linux
-  - mv ${AGAMA_WINDOWS} ${CI_COMMIT_REF_NAME}/Windows
-  - mv ${AGAMA_MACOS}.dmg ${CI_COMMIT_REF_NAME}/MacOS
-  - echo ${AUTH_KEY} > AUTH_KEY.json
+  - mkdir -p $CI_COMMIT_REF_NAME/Windows
+  - mkdir -p $CI_COMMIT_REF_NAME/Linux
+  - mkdir -p $CI_COMMIT_REF_NAME/MacOS
+  - mv $AGAMA_LINUX $CI_COMMIT_REF_NAME/Linux
+  - mv $AGAMA_WINDOWS $CI_COMMIT_REF_NAME/Windows
+  - mv $AGAMA_MACOS.dmg $CI_COMMIT_REF_NAME/MacOS
+  - echo $AUTH_KEY > AUTH_KEY.json
   - gcloud auth activate-service-account --key-file AUTH_KEY.json
   - gsutil rsync -r $CI_COMMIT_REF_NAME $STAGING/Agama/$CI_COMMIT_REF_NAME/
 
